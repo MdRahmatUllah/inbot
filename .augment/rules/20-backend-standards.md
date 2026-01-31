@@ -10,18 +10,18 @@ type: "always_apply"---
 ## Stack
 - Python + FastAPI
 - PostgreSQL (SQLAlchemy / SQLModel)
-- Qdrant (vector search)
-- Neo4j (knowledge graph)
+- PostgreSQL with pgvector (vector search)
 - Redis (cache, rate-limit, ephemeral state)
 
 ## Structure (MANDATORY)
 backend/app/
 - api/        # Routers only (thin)
-- domain/     # Entities, value objects
-- usecases/   # Business logic
-- infra/      # DB, cache, vector, graph
+- models/     # SQLAlchemy models (Domain entities)
+- services/   # Business logic (Use Cases)
 - schemas/    # Pydantic DTOs
-- workers/    # Background jobs
+- ai/         # AI provider integrations
+- utils/      # Utility functions
+- tasks/      # Celery background tasks
 
 ## API Rules
 - REST-first

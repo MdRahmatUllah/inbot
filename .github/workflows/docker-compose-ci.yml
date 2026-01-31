@@ -1,0 +1,58 @@
+name: Docker Compose CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'docker-compose.yml'
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/docker-compose-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Create environment files
+      run: |
+        cp backend/.env.example backend/.env
+        cp frontend/.env.local.example frontend/.env.local
+        
+        # Update backend .env with test values
+        echo "SECRET_KEY=test-secret-key-for-ci" >> backend/.env
+        echo "JWT_SECRET_KEY=test-jwt-secret-for-ci" >> backend/.env
+    
+    - name: Start services
+      run: |
+        docker-compose up -d postgres redis minio
+        
+        # Wait for services to be healthy
+        timeout 60 bash -c 'until docker-compose ps | grep -q "healthy"; do sleep 2; done'
+    
+    - name: Verify PostgreSQL
+      run: |
+        docker-compose exec -T postgres psql -U inbot -d inbot -c "SELECT * FROM pg_extension WHERE extname IN ('vector', 'uuid-ossp');"
+    
+    - name: Verify Redis
+      run: |
+        docker-compose exec -T redis redis-cli ping
+    
+    - name: Verify MinIO
+      run: |
+        curl -f http://localhost:9000/minio/health/live || exit 1
+    
+    - name: Show logs on failure
+      if: failure()
+      run: |
+        docker-compose logs
+    
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down -v
+
